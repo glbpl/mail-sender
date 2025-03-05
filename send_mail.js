@@ -2,6 +2,8 @@
 require('dotenv').config();
 
 const express = require('express');
+const https = require('https'); // Добавляем модуль https
+const fs = require('fs'); // Для чтения файлов сертификатов
 const nodemailer = require('nodemailer');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -82,7 +84,20 @@ app.post('/api/send-mail', async (req, res) => {
   }
 });
 
-// Starting server
-app.listen(port, () => {
-  console.log(`Server started on port ${port}`);
+// Опции для HTTPS сервера - пути к сертификату и ключу из .env файла
+const httpsOptions = {
+  key: fs.readFileSync(process.env.SSL_KEY_PATH),  // Путь к вашему приватному ключу из .env
+  cert: fs.readFileSync(process.env.SSL_CERT_PATH)  // Путь к вашему SSL сертификату из .env
+};
+
+// Создание HTTPS сервера вместо HTTP
+https.createServer(httpsOptions, app).listen(port, () => {
+  console.log(`HTTPS Server started on port ${port}`);
 });
+
+// Если вы хотите также сохранить HTTP сервер, который будет перенаправлять на HTTPS:
+// const http = require('http');
+// http.createServer((req, res) => {
+//   res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
+//   res.end();
+// }).listen(80);

@@ -1,0 +1,51 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "deploy mail-sender to server",
+            "type": "shell",
+            "command": "rsync",
+            "args": [
+                "-avz",
+                "${workspaceFolder}/",
+                "--exclude='node_modules'",
+                "--exclude='.vscode'",
+                "--exclude='.git'",
+                "--exclude='.DS_Store'",
+                "--exclude='.gitignore'",
+                "--exclude='npm-debug.log'",
+                "--exclude='yarn.lock'",
+                "--exclude='yarn-error.log'",
+                "--exclude='*.log'",
+                "root@myserver:/opt/mail-sender/"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "never",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "dependsOn": [
+                "Play Mail Sound"
+            ]
+        },
+        {
+            "label": "Play Mail Sound",
+            "type": "shell",
+            "command": "afplay",
+            "args": [
+                "/System/Library/Sounds/Submarine.aiff"
+            ],
+            "presentation": {
+                "reveal": "never"
+            }
+        }
+    ]
+}
