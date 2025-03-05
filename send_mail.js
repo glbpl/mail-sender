@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 });
 
 // Маршрут для обработки данных формы
-app.post('/send-mail', async (req, res) => {
+app.post('/api/send-mail', async (req, res) => {
   try {
     const { name, email, message } = req.body;
     
@@ -51,7 +51,7 @@ app.post('/send-mail', async (req, res) => {
       to: process.env.EMAIL_RECIPIENT,
       subject: `Новое сообщение от ${name}`,
       html: `
-        <h3>Новое сообщение с вашего сайта</h3>
+        <h3>Новое сообщение с вашего сайта-портфолио 💼</h3>
         <p><strong>Имя:</strong> ${name}</p>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Сообщение:</strong></p>
