@@ -1,102 +1,109 @@
-// Load environment variables from .env file
+// Загрузка переменных окружения из файла .env
 require('dotenv').config();
 
 const express = require('express');
-const https = require('https'); // Добавляем модуль https
-const fs = require('fs'); // Для чтения файлов сертификатов
+const https = require('https');
+const fs = require('fs');
 const nodemailer = require('nodemailer');
-const bodyParser = require('body-parser');
 const cors = require('cors');
+const multer = require('multer'); // Добавляем multer для обработки multipart/form-data
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware for CORS handling
-app.use(cors());
+// Настройка multer для обработки multipart/form-data
+const upload = multer();
 
-// Middleware for request body parsing
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+// Расширенные настройки CORS для работы с Webflow
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-requested-with', 'Authorization']
+}));
 
-// Setting up transporter for sending emails via Yandex
+// Настройка транспорта для отправки писем через Яндекс
 const transporter = nodemailer.createTransport({
   host: 'smtp.yandex.ru',
   port: 465,
-  secure: true, // true for port 465
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   }
 });
 
-// Route to check server operation
+// Маршрут для проверки работы сервера
 app.get('/', (req, res) => {
-  res.send('Mail server is working!');
+  res.send('Почтовый сервер работает!');
 });
 
-// Route for processing form data
-app.post('/api/send-mail', async (req, res) => {
+// Маршрут для обработки данных формы из Webflow с поддержкой только multipart/form-data
+app.post('/api/send-mail', upload.none(), async (req, res) => {
+  // Логируем заголовки и тело запроса для отладки
+  console.log('Заголовки запроса:', req.headers);
+  console.log('Тело запроса после обработки multer:', req.body);
+
   try {
-    const { name, email, message } = req.body;
-    
-    // Check if all required fields are present
+    // Извлекаем поля формы напрямую из req.body (multer уже обработал multipart/form-data)
+    const name = req.body.name || req.body.Name || '';
+    const email = req.body.email || req.body.Email || '';
+    const message = req.body.message || req.body.Message || req.body.comment || req.body.Comment || '';
+
+    console.log('Извлеченные данные формы:', { name, email, message });
+
+    // Проверяем наличие всех обязательных полей
     if (!name || !email || !message) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please fill in all form fields (name, email, and message)' 
-      });
+      console.error('Отсутствуют обязательные поля');
+      return res.sendStatus(400); // Только статус без тела ответа
     }
-    
-    // Email configuration
+
+    console.log(`Отправка письма от ${name} <${email}>`);
+
+    // Конфигурация письма
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: process.env.EMAIL_RECIPIENT,
-      subject: `New message from ${name}`,
+      subject: `Новое сообщение от ${name}`,
       html: `
-        <h3>New message from your portfolio website 💼</h3>
-        <p><strong>Name:</strong> ${name}</p>
+        <h3>Новое сообщение с вашего портфолио 💼</h3>
+        <p><strong>Имя:</strong> ${name}</p>
         <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Message:</strong></p>
+        <p><strong>Сообщение:</strong></p>
         <p>${message}</p>
       `,
       text: `
-        New message from your website
+        Новое сообщение с вашего сайта
         
-        Name: ${name}
+        Имя: ${name}
         Email: ${email}
-        Message: ${message}
+        Сообщение: ${message}
       `
     };
-    
-    // Sending email
+
+    // Отправка письма
     await transporter.sendMail(mailOptions);
-    
-    // Sending answer to the client
-    res.status(200).end();
+    console.log('Письмо успешно отправлено');
+
+    // Возвращаем только статус 200 без тела ответа
+    res.sendStatus(200);
 
   } catch (error) {
-    console.error('Error sending email:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'An error occurred while sending the message. Please try again later.' 
-    });
+    console.error('Ошибка при отправке письма:', error);
+    // Возвращаем только статус 500 без тела ответа
+    res.sendStatus(500);
   }
 });
 
+// Обработка OPTIONS запросов (для предварительных запросов CORS)
+app.options('*', cors());
+
 // Опции для HTTPS сервера - пути к сертификату и ключу из .env файла
 const httpsOptions = {
-  key: fs.readFileSync(process.env.SSL_KEY_PATH),  // Путь к вашему приватному ключу из .env
-  cert: fs.readFileSync(process.env.SSL_CERT_PATH)  // Путь к вашему SSL сертификату из .env
+  key: fs.readFileSync(process.env.SSL_KEY_PATH),
+  cert: fs.readFileSync(process.env.SSL_CERT_PATH)
 };
 
-// Создание HTTPS сервера вместо HTTP
+// Создание HTTPS сервера
 https.createServer(httpsOptions, app).listen(port, () => {
-  console.log(`HTTPS Server started on port ${port}`);
+  console.log(`HTTPS сервер запущен на порту ${port}`);
 });
-
-// Если вы хотите также сохранить HTTP сервер, который будет перенаправлять на HTTPS:
-// const http = require('http');
-// http.createServer((req, res) => {
-//   res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
-//   res.end();
-// }).listen(80);
